@@ -19,8 +19,17 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
+#include "linear_reg.h"
 
+// utility to copy and store original y data
+void copy_vector(double *src, double *dest) {
+    size_t n = sizeof(y) / sizeof(y[0]);
+    for (size_t i = 0; i < n; ++i) {
+        dest[i] = src[i];
+    }
+}
 
 
 // inputs
@@ -82,7 +91,15 @@ static void gaussian_ppmx(
   // ii - save MCMC iterates index
   // b - xb index
   // bb - second xb index
-
+  
+  // Store a copy of the original y so that it isn't lost during the residualization process
+  //
+  //
+  //
+  //
+  //
+  //
+  copy_vector(y, yOrig)
 
   int i, j, jj, jjj, c, p, pp, k, ii, b, bb;
   int nout = (*draws - *burn)/(*thin);
@@ -173,6 +190,7 @@ static void gaussian_ppmx(
   double *_muh = R_VectorInit(*nobs,0.0);;
   double *_sig2h = R_VectorInit(*nobs, 0.5*modelPriors[2]);;
   double *_like = R_VectorInit(*nobs,0.0);;
+  double *_alphaMean = R_VectorInit(ncov,0.0);;
 
   int _nclus=0;
   int _Si[*nobs], nh[*nobs];
@@ -205,6 +223,7 @@ static void gaussian_ppmx(
 
   double *_ppred = R_Vector((*npred));
   double *_rbpred = R_Vector((*npred));
+  double *_globalMean = R_Vector((*npred));
   int _predclass[*npred];
 
 
@@ -295,6 +314,12 @@ static void gaussian_ppmx(
   // For the variance similarity function
   double alpha = simParms[6];
 
+  // for the global regression
+  double alpha0Global=R_VectorInit(ncov,0.0);;
+  // TODO Lambda0 initialize
+  double mu0Global=simParms[7] ;
+  double beta_0PrecisionGlobal=simParms[8];
+
 
 
 
@@ -375,6 +400,19 @@ static void gaussian_ppmx(
       Rprintf("Progress:%.1f%%, Time:%.1f seconds\r", ((double) (i+1) / (double) (*draws))*100.0, calc_time);
     }
 
+
+    //////////////////////////////////////////////////////////////////////////////////
+    // Fit linear regression and residualize the Y ///////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////
+
+    // fit coefficients for linear model Y ~ X
+    //
+    // This iwll affect the y's at about lines 980
+    // Call the sample_beta_sigma2 function
+    // sample_beta_sigma2(y, X, beta, &sigma2, beta0, V0, alpha0, beta0_prior, r, 0);
+    // - make sure the remiander of ppmx algorithm is run on the residualized Y, not 
+    //  the original Y
+    // - When estimate alpha, make sure it's been residualized w.r.t the lclustering (betas)
     //////////////////////////////////////////////////////////////////////////////////
     //
     // update the cluster labels using the polya urn scheme of
@@ -383,6 +421,8 @@ static void gaussian_ppmx(
     //	paper.
     //
     //////////////////////////////////////////////////////////////////////////////////
+    // -
+
 
     for(j = 0; j < *nobs; j++){
 
